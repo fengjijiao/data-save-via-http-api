@@ -10,9 +10,11 @@ import (
 )
 
 const (
-	ERROR_UNSUPPORTED_REQUEST_METHOD = "Unsupported request method"
-	ERROR_PARSING_DATA = "Error parsing Data"
-	ERROR_ACCOUNT_LOGIN = "Login Info Error"
+	ErrorUnsupportedRequestMethod  = "Unsupported request method"
+	ErrorParsingData               = "Error parsing Data"
+	ErrorAccountLogin              = "Login Info Error"
+	ErrorNoAccessPermission        = "No Access Permission"
+	ErrorMissingRequiredParameters = "Missing Required Parameters"
 )
 
 const (
@@ -21,6 +23,16 @@ const (
 	StatusError
 	StatusUnknown
 )
+
+type CallbackId struct {
+	Status int               `json:"status"`
+	Id   int64 `json:"id"`
+}
+
+type CallbackDataSet struct {
+	Status int               `json:"status"`
+	Data   sqliteLib.DataSet `json:"data"`
+}
 
 type CallbackRegisterData struct {
 	Uid int64 `json:"uid"`
@@ -61,7 +73,7 @@ func LoginHttpHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 		case "POST":
 			if err := r.ParseMultipartForm(parseMultipartFormMaxMemory); err != nil {
-				json.NewEncoder(w).Encode(GenError(ERROR_PARSING_DATA))
+				json.NewEncoder(w).Encode(GenError(ErrorParsingData))
 				return
 			}
 			username := r.FormValue("username")
@@ -75,10 +87,10 @@ func LoginHttpHandler(w http.ResponseWriter, r *http.Request) {
 					},
 				})
 			}else {
-				json.NewEncoder(w).Encode(GenError(ERROR_ACCOUNT_LOGIN))
+				json.NewEncoder(w).Encode(GenError(ErrorAccountLogin))
 			}
 		default:
-			json.NewEncoder(w).Encode(GenError(ERROR_UNSUPPORTED_REQUEST_METHOD))
+			json.NewEncoder(w).Encode(GenError(ErrorUnsupportedRequestMethod))
 			return
 	}
 }
@@ -87,7 +99,7 @@ func RegisterHttpHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		if err := r.ParseMultipartForm(parseMultipartFormMaxMemory); err != nil {
-			json.NewEncoder(w).Encode(GenError(ERROR_PARSING_DATA))
+			json.NewEncoder(w).Encode(GenError(ErrorParsingData))
 			return
 		}
 		username := r.FormValue("username")
@@ -105,7 +117,7 @@ func RegisterHttpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	default:
-		json.NewEncoder(w).Encode(GenError(ERROR_UNSUPPORTED_REQUEST_METHOD))
+		json.NewEncoder(w).Encode(GenError(ErrorUnsupportedRequestMethod))
 		return
 	}
 }
@@ -117,11 +129,58 @@ func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	vars := mux.Vars(r)
-    fmt.Fprint(w, "Welcome!\n" + vars["did"] + strconv.Itoa(int(uid)))
+	did, err := strconv.ParseInt(vars["did"], 10, 64)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	if !sqliteLib.CheckDataSetPermission(uid, did) {
+		json.NewEncoder(w).Encode(GenError(ErrorNoAccessPermission))
+		return
+	}
+	result, err := sqliteLib.GetDataSet(did)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	json.NewEncoder(w).Encode(CallbackDataSet {
+		Status: StatusSuccess,
+		Data: *result,
+	})
 }
 
 func CreateDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprint(w, "Welcome!\n")
+	uid, err := CheckToken(w, r)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+
+	if err := r.ParseMultipartForm(parseMultipartFormMaxMemory); err != nil {
+		json.NewEncoder(w).Encode(GenError(ErrorParsingData))
+		return
+	}
+	valtypeStr := r.FormValue("valtype")
+
+	if valtypeStr == "" {
+		json.NewEncoder(w).Encode(GenError(ErrorMissingRequiredParameters))
+		return
+	}
+	valtype, err := strconv.Atoi(valtypeStr)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+
+	did, err := sqliteLib.AddDataSource(uid, valtype)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	json.NewEncoder(w).Encode(CallbackId {
+		Status: StatusSuccess,
+		Id: did,
+	})
 }
 
 func PutValHttpHandler(w http.ResponseWriter, r *http.Request) {

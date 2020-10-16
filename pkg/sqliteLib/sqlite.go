@@ -19,7 +19,7 @@ func Init() {
 func InitTable() int64 {
 	sql := `
 		CREATE TABLE "DataSet" (dsid integer PRIMARY KEY, did INTEGER NOT NULL DEFAULT '0', valtype INTEGER NOT NULL DEFAULT '0', value TEXT);
-		CREATE TABLE "DataSource" (did integer primary key , createdTimestamp INTEGER, updatedTimestamp INTEGER, valtype INTEGER NOT NULL DEFAULT '0');
+		CREATE TABLE "DataSource" (did integer primary key , createdTimestamp INTEGER, updatedTimestamp INTEGER, valtype INTEGER NOT NULL DEFAULT '0', uid INTEGER NOT NULL DEFAULT '0');
 		CREATE TABLE "User" (uid integer primary key, username varchar(20), password text , total INTEGER NOT NULL DEFAULT '0', token TEXT);
 		`
 	result, err := sqliteR.Exec(sql)
@@ -101,12 +101,13 @@ func UpdatePassword(username, password string) error {
 
 type DataSource struct {
 	Did int64 `json:"did"`
+	Uid int64 `json:"uid"`
 	CreatedTimestamp int `json:"createdTimestamp"`
 	UpdatedTimestamp int `json:"updatedTimestamp"`
 }
 
-func AddDataSource(valtype int) (int64, error) {
-	result, err := sqliteR.PrepareExec("INSERT INTO DataSourceSet (createdTimestamp, updatedTimestamp, valtype) VALUES (?, ?, ?);", time.Now().Unix(), time.Now().Unix(), valtype)
+func AddDataSource(uid int64, valtype int) (int64, error) {
+	result, err := sqliteR.PrepareExec("INSERT INTO DataSource (uid, createdTimestamp, updatedTimestamp, valtype) VALUES (?, ?, ?, ?);", uid, time.Now().Unix(), time.Now().Unix(), valtype)
 	if err != nil {
 		fmt.Printf("AddDataSource Error: %s\n", err)
 		return 0, err
@@ -120,7 +121,7 @@ func AddDataSource(valtype int) (int64, error) {
 }
 
 func DelDataSource(did int) error {
-	_, err := sqliteR.PrepareExec("DELETE FROM DataSourceSet WHERE did = ?;", did)
+	_, err := sqliteR.PrepareExec("DELETE FROM DataSource WHERE did = ?;", did)
 	if err != nil {
 		fmt.Printf("DelDataSource Error: %s\n", err)
 		return err
@@ -144,7 +145,7 @@ func GetUserInfo(uid int64) (*UserInfo, error) {
 	}
 	if rows.Next() {
 		var userinfo UserInfo
-		err = rows.Scan(&userinfo)
+		err = rows.Scan(&userinfo.Uid, &userinfo.UserName, &userinfo.PassWord, &userinfo.Total, &userinfo.Token)
 		if err != nil {
 			fmt.Printf("GetUserInfo Error: %s\n", err)
 			return nil, err
@@ -155,19 +156,19 @@ func GetUserInfo(uid int64) (*UserInfo, error) {
 }
 
 func GetUidViaToken(token string) (int64, error) {
-	rows, err := sqliteR.PrepareQuery("SELECT * FROM User WHERE token = ? LIMIT 1;", token)
+	rows, err := sqliteR.PrepareQuery("SELECT uid FROM User WHERE token = ? LIMIT 1;", token)
 	if err != nil {
 		fmt.Printf("GetUidViaToken Error: %s\n", err)
 		return -1, err
 	}
 	if rows.Next() {
-		var userinfo UserInfo
-		err = rows.Scan(&userinfo)
+		var uid int64
+		err = rows.Scan(&uid)
 		if err != nil {
 			fmt.Printf("GetUidViaToken Error: %s\n", err)
 			return -1, err
 		}
-		return userinfo.Uid, nil
+		return uid, nil
 	}
 	fmt.Println("GetUidViaToken Error: No eligible user fond.")
 	return -1, errors.New("No eligible user fond.")
@@ -180,3 +181,35 @@ type DataSet struct {
 	Value string `json:"value"`
 }
 
+func GetDataSet(did int64) (*DataSet, error) {
+	rows, err := sqliteR.PrepareQuery("SELECT * FROM DataSet WHERE did = ? LIMIT 1;", did)
+	if err != nil {
+		fmt.Printf("GetDataSet Error: %s\n", err)
+		return nil, err
+	}
+	if rows.Next() {
+		var dataset DataSet
+		err = rows.Scan(&dataset)
+		if err != nil {
+			fmt.Printf("GetDataSet Error: %s\n", err)
+			return nil, err
+		}
+		return &dataset, nil
+	}
+	fmt.Println("GetDataSet Error: No eligible dataSet fond.")
+	return nil, errors.New("No eligible dataSet fond.")
+}
+
+func CheckDataSetPermission(uid, did int64) bool {
+	rows, err := sqliteR.PrepareQuery("SELECT * FROM DataSet WHERE did = ? AND uid = ? LIMIT 1;", did, uid)
+	if err != nil {
+		fmt.Printf("CheckDataSetPermission Error: %s\n", err)
+		return false
+	}
+	count, err := sqliteR.GetCount(rows)
+	if err != nil {
+		fmt.Printf("CheckDataSetPermission Error: %s\n", err)
+		return false
+	}
+	return count > 0
+}
