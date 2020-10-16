@@ -28,18 +28,6 @@ func NewRouter() *mux.Router {
 
 var routes = Routes {
 	Route {
-		"Css",
-		"GET",
-		"/css/{cssName}.css",
-		CssStaticHttpHandler,
-	},
-	Route {
-		"Js",
-		"GET",
-		"/js/{jsName}.js",
-		JsStaticHttpHandler,
-	},
-	Route {
 		"Index",
 		"GET",
 		"/",
@@ -47,21 +35,9 @@ var routes = Routes {
 	},
 	Route {
 		"Login",
-		"GET",
-		"/login",
-		LoginHttpHandler,
-	},
-	Route {
-		"Login",
 		"POST",
 		"/login",
 		LoginHttpHandler,
-	},
-	Route {
-		"Register",
-		"GET",
-		"/register",
-		RegisterHttpHandler,
 	},
 	Route {
 		"Register",

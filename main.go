@@ -1,8 +1,8 @@
 package main
 
 import (
-	httpLib "data-save-via-http-api/pkg/httpLib"
-	sqliteLib "data-save-via-http-api/pkg/sqliteLib"
+	httpLib "./pkg/httpLib"
+	sqliteLib "./pkg/sqliteLib"
 	"os"
 )
 
@@ -13,7 +13,7 @@ func init() {
 
 func main() {
 	Close := make(chan int)
-	//sqliteLib.InitTable()
+	sqliteLib.InitTable()
 	go httpLib.Run(Close)
 	for {
 		select {
