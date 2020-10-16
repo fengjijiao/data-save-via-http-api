@@ -1,4 +1,4 @@
-package core
+package coreLib
 
 //const (
 //	TYPE_INTEGER = itoa

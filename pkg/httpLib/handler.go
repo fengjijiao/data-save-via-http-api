@@ -1,11 +1,12 @@
 package httpLib
 
 import (
-	sqliteLib "../../pkg/sqliteLib"
+	"../../pkg/sqliteLib"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"strconv"
 )
 
 const (
@@ -46,7 +47,7 @@ type CallbackTip struct {
 }
 
 func GenError(msg string) *CallbackTip {
-	return &CallbackTip{
+	return &CallbackTip {
 		Status: StatusError,
 		Msg:    msg,
 	}
@@ -83,7 +84,6 @@ func LoginHttpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RegisterHttpHandler(w http.ResponseWriter, r *http.Request) {
-    //w.Write(ReadFile("register.html"))
 	switch r.Method {
 	case "POST":
 		if err := r.ParseMultipartForm(parseMultipartFormMaxMemory); err != nil {
@@ -111,12 +111,13 @@ func RegisterHttpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
+	uid, err := CheckToken(w, r)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
 	vars := mux.Vars(r)
-    fmt.Fprint(w, "Welcome!\n" + vars["did"])
-}
-
-func PostValHttpHandler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprint(w, "Welcome!\n")
+    fmt.Fprint(w, "Welcome!\n" + vars["did"] + strconv.Itoa(int(uid)))
 }
 
 func CreateDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
@@ -129,4 +130,8 @@ func PutValHttpHandler(w http.ResponseWriter, r *http.Request) {
 
 func DelValHttpHandler(w http.ResponseWriter, r *http.Request) {
     fmt.Fprint(w, "Welcome!\n")
+}
+
+func ListDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "Welcome!\n")
 }

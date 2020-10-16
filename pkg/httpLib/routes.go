@@ -52,6 +52,12 @@ var routes = Routes {
 		CreateDataSetHttpHandler,
 	},
 	Route {
+		"ListDataSet",
+		"GET",
+		"/dataSet/list",
+		ListDataSetHttpHandler,
+	},
+	Route {
 		"GetVal",
 		"GET",
 		"/dataSet/{did}",

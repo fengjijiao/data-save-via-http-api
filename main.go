@@ -1,8 +1,8 @@
 package main
 
 import (
-	httpLib "./pkg/httpLib"
-	sqliteLib "./pkg/sqliteLib"
+	"./pkg/httpLib"
+	"./pkg/sqliteLib"
 	"os"
 )
 

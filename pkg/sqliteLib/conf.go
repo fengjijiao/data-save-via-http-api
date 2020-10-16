@@ -1,7 +1,8 @@
 package sqliteLib
 
 var (
-	DBPath string = "test.db"
+	DBPath = "test.db"
+	TokenLength = 64
 )
 
 func SetDBPath(newDBPath string) {
