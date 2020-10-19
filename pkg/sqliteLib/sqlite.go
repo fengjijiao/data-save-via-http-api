@@ -41,6 +41,7 @@ func AuthUser(username, password string) bool {
 		fmt.Printf("AuthUser Error: %s\n", err)
 		return false
 	}
+	defer rows.Close()
 	count, err := sqliteR.GetCount(rows)
 	return count > 0
 }
@@ -51,6 +52,7 @@ func ExistUser(username string) bool {
 		fmt.Printf("AddUser Error: %s\n", err)
 		return false
 	}
+	defer rows.Close()
 	count, err := sqliteR.GetCount(rows)
 	return count > 0
 }
@@ -143,6 +145,7 @@ func GetUserInfo(uid int64) (*UserInfo, error) {
 		fmt.Printf("GetUserInfo Error: %s\n", err)
 		return nil, err
 	}
+	defer rows.Close()
 	if rows.Next() {
 		var userinfo UserInfo
 		err = rows.Scan(&userinfo.Uid, &userinfo.UserName, &userinfo.PassWord, &userinfo.Total, &userinfo.Token)
@@ -161,6 +164,7 @@ func GetUidViaToken(token string) (int64, error) {
 		fmt.Printf("GetUidViaToken Error: %s\n", err)
 		return -1, err
 	}
+	defer rows.Close()
 	if rows.Next() {
 		var uid int64
 		err = rows.Scan(&uid)
@@ -187,9 +191,10 @@ func GetDataSet(did int64) (*DataSet, error) {
 		fmt.Printf("GetDataSet Error: %s\n", err)
 		return nil, err
 	}
+	defer rows.Close()
 	if rows.Next() {
 		var dataset DataSet
-		err = rows.Scan(&dataset)
+		err = rows.Scan(&dataset.DSId, &dataset.Did, &dataset.ValueType, &dataset.Value)
 		if err != nil {
 			fmt.Printf("GetDataSet Error: %s\n", err)
 			return nil, err
@@ -200,8 +205,21 @@ func GetDataSet(did int64) (*DataSet, error) {
 	return nil, errors.New("No eligible dataSet fond.")
 }
 
+func ExistDataSet(did int64) bool {
+	rows, err := sqliteR.PrepareQuery("SELECT * FROM DataSet WHERE did = ? LIMIT 1;", did)
+	if err != nil {
+		fmt.Printf("ExistDataSet Error: %s\n", err)
+		return false
+	}
+	count, err := sqliteR.GetCount(rows)
+	if err != nil {
+		return false
+	}
+	return count > 0
+}
+
 func CheckDataSetPermission(uid, did int64) bool {
-	rows, err := sqliteR.PrepareQuery("SELECT * FROM DataSet WHERE did = ? AND uid = ? LIMIT 1;", did, uid)
+	rows, err := sqliteR.PrepareQuery("SELECT COUNT(*) as count FROM DataSource WHERE did = ? AND uid = ? LIMIT 1;", did, uid)
 	if err != nil {
 		fmt.Printf("CheckDataSetPermission Error: %s\n", err)
 		return false
@@ -212,4 +230,47 @@ func CheckDataSetPermission(uid, did int64) bool {
 		return false
 	}
 	return count > 0
+}
+
+func AddDataSet(did int64, valueType int, value string) (int64, error) {
+	result, err := sqliteR.PrepareExec("INSERT INTO DataSet (did, valtype, value) VALUES (?, ?, ?);", did, valueType, value)
+	if err != nil {
+		fmt.Printf("AddDataSet Error: %s\n", err)
+		return 0, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		fmt.Printf("AddDataSet Error: %s\n", err)
+		return -1, err
+	}
+	return id, nil
+}
+
+func UpdateDataSetValue(dsid int64, value string) error {
+	_, err := sqliteR.PrepareExec("UPDATE DataSet SET value = ? WHERE dsid = ?;", value, dsid)
+	if err != nil {
+		fmt.Printf("UpdateDataSetValue Error: %s\n", err)
+		return err
+	}
+	return nil
+}
+
+func GetDSIdViaDid(did int64) (int64, error) {
+	rows, err := sqliteR.PrepareQuery("SELECT dsid FROM DataSet WHERE did = ? LIMIT 1;", did)
+	if err != nil {
+		fmt.Printf("GetDSIdViaDid Error: %s\n", err)
+		return -1, err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var dsid int64
+		err = rows.Scan(&dsid)
+		if err != nil {
+			fmt.Printf("GetDSIdViaDid Error: %s\n", err)
+			return -1, err
+		}
+		return dsid, nil
+	}
+	fmt.Println("GetDSIdViaDid Error: No eligible dataSet fond.")
+	return -1, errors.New("No eligible dataSet fond.")
 }

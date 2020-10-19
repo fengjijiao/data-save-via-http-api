@@ -11,7 +11,6 @@ type SqliteDB struct {
 	DB *sql.DB
 }
 
-//创建SqliteDB实体
 func OpenDataBase(DBPath string) (*SqliteDB, error) {
 	DB, err := sql.Open("sqlite3", DBPath)
 	if err != nil {
@@ -65,6 +64,7 @@ func (sdb *SqliteDB) GetCount(rows *sql.Rows) (int, error) {
 			return -1, err
 		}
 	}
+	defer rows.Close()
 	return count, nil
 }
 

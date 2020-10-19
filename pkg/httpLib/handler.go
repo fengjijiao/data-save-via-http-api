@@ -15,6 +15,7 @@ const (
 	ErrorAccountLogin              = "Login Info Error"
 	ErrorNoAccessPermission        = "No Access Permission"
 	ErrorMissingRequiredParameters = "Missing Required Parameters"
+	ErrorContentNoFound 		   = "Content No Found"
 )
 
 const (
@@ -29,9 +30,14 @@ type CallbackId struct {
 	Id   int64 `json:"id"`
 }
 
+type CallbackDataSetData struct {
+	ValueType int `json:"valueType"`
+	Value string `json:"value"`
+}
+
 type CallbackDataSet struct {
 	Status int               `json:"status"`
-	Data   sqliteLib.DataSet `json:"data"`
+	Data   CallbackDataSetData `json:"data"`
 }
 
 type CallbackRegisterData struct {
@@ -145,7 +151,10 @@ func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(CallbackDataSet {
 		Status: StatusSuccess,
-		Data: *result,
+		Data: CallbackDataSetData {
+			ValueType: result.ValueType,
+			Value: result.Value,
+		},
 	})
 }
 
@@ -160,7 +169,7 @@ func CreateDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(GenError(ErrorParsingData))
 		return
 	}
-	valtypeStr := r.FormValue("valtype")
+	valtypeStr := r.FormValue("valueType")
 
 	if valtypeStr == "" {
 		json.NewEncoder(w).Encode(GenError(ErrorMissingRequiredParameters))
@@ -184,7 +193,55 @@ func CreateDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PutValHttpHandler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprint(w, "Welcome!\n")
+	uid, err := CheckToken(w, r)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+
+	vars := mux.Vars(r)
+	did, err := strconv.ParseInt(vars["did"], 10, 64)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+
+	if err := r.ParseMultipartForm(parseMultipartFormMaxMemory); err != nil {
+		json.NewEncoder(w).Encode(GenError(ErrorParsingData))
+		return
+	}
+	newValStr := r.FormValue("newValue")
+	if newValStr == "" {
+		json.NewEncoder(w).Encode(GenError(ErrorMissingRequiredParameters))
+		return
+	}
+
+	if !sqliteLib.CheckDataSetPermission(uid, did) {
+		json.NewEncoder(w).Encode(GenError(ErrorNoAccessPermission))
+		return
+	}
+
+	if !sqliteLib.ExistDataSet(did) {
+		json.NewEncoder(w).Encode(GenError(ErrorContentNoFound))
+		return
+	}
+
+	dsid, err := sqliteLib.GetDSIdViaDid(did)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+
+	err = sqliteLib.UpdateDataSetValue(dsid, newValStr)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+
+	json.NewEncoder(w).Encode(CallbackTip {
+		Status: StatusSuccess,
+		Msg: "Update Successfully",
+	})
 }
 
 func DelValHttpHandler(w http.ResponseWriter, r *http.Request) {
