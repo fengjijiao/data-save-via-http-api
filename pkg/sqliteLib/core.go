@@ -36,7 +36,7 @@ func (sdb *SqliteDB) PrepareExec(prepareSql string, args... interface{}) (sql.Re
 	if err != nil {
 		return nil, err
 	}
-	defer stmt.Close()
+	//defer stmt.Close()
 	result, err := stmt.Exec(args...)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (sdb *SqliteDB) PrepareQuery(prepareSql string, args... interface{}) (*sql.
 	if err != nil {
 		return nil, err
 	}
-	defer stmt.Close()
+	//defer stmt.Close()
 	rows, err := stmt.Query(args...)
 	if err != nil {
 		return nil, err

@@ -3,7 +3,6 @@ package httpLib
 import (
 	"../../pkg/sqliteLib"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
@@ -25,14 +24,19 @@ const (
 	StatusUnknown
 )
 
+type CallbackDataSourceList struct {
+	Status int               `json:"status"`
+	Data   []sqliteLib.DataSource `json:"data"`
+}
+
 type CallbackId struct {
 	Status int               `json:"status"`
-	Id   int64 `json:"id"`
+	Id     int64             `json:"id"`
 }
 
 type CallbackDataSetData struct {
-	ValueType int `json:"valueType"`
-	Value string `json:"value"`
+	ValueType int    `json:"valueType"`
+	Value     string `json:"value"`
 }
 
 type CallbackDataSet struct {
@@ -60,8 +64,8 @@ type CallbackLogin struct {
 }
 
 type CallbackTip struct {
-	Status int `json:"status"`
-	Msg string `json:"msg"`
+	Status int    `json:"status"`
+	Msg    string `json:"msg"`
 }
 
 func GenError(msg string) *CallbackTip {
@@ -75,6 +79,7 @@ func IndexHttpHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("{}"))
 }
 
+//用户登录
 func LoginHttpHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 		case "POST":
@@ -101,6 +106,7 @@ func LoginHttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//注册用户
 func RegisterHttpHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
@@ -128,6 +134,7 @@ func RegisterHttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//获取数据值
 func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 	uid, err := CheckToken(w, r)
 	if err != nil {
@@ -144,7 +151,12 @@ func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(GenError(ErrorNoAccessPermission))
 		return
 	}
-	result, err := sqliteLib.GetDataSet(did)
+	dsid, err := sqliteLib.GetDSIdViaDid(did)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	result, err := sqliteLib.GetDataSet(dsid)
 	if err != nil {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
@@ -158,19 +170,18 @@ func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+//创建数据源
 func CreateDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
 	uid, err := CheckToken(w, r)
 	if err != nil {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
 	}
-
 	if err := r.ParseMultipartForm(parseMultipartFormMaxMemory); err != nil {
 		json.NewEncoder(w).Encode(GenError(ErrorParsingData))
 		return
 	}
 	valtypeStr := r.FormValue("valueType")
-
 	if valtypeStr == "" {
 		json.NewEncoder(w).Encode(GenError(ErrorMissingRequiredParameters))
 		return
@@ -180,7 +191,6 @@ func CreateDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
 	}
-
 	did, err := sqliteLib.AddDataSource(uid, valtype)
 	if err != nil {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
@@ -192,20 +202,19 @@ func CreateDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+//更新数据值
 func PutValHttpHandler(w http.ResponseWriter, r *http.Request) {
 	uid, err := CheckToken(w, r)
 	if err != nil {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
 	}
-
 	vars := mux.Vars(r)
 	did, err := strconv.ParseInt(vars["did"], 10, 64)
 	if err != nil {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
 	}
-
 	if err := r.ParseMultipartForm(parseMultipartFormMaxMemory); err != nil {
 		json.NewEncoder(w).Encode(GenError(ErrorParsingData))
 		return
@@ -215,39 +224,90 @@ func PutValHttpHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(GenError(ErrorMissingRequiredParameters))
 		return
 	}
-
 	if !sqliteLib.CheckDataSetPermission(uid, did) {
 		json.NewEncoder(w).Encode(GenError(ErrorNoAccessPermission))
 		return
 	}
-
-	if !sqliteLib.ExistDataSet(did) {
+	if !sqliteLib.ExistDataSource(did) {
 		json.NewEncoder(w).Encode(GenError(ErrorContentNoFound))
 		return
 	}
-
+	dataSource, err := sqliteLib.GetDataSource(did)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
 	dsid, err := sqliteLib.GetDSIdViaDid(did)
 	if err != nil {
+		dsid, err = sqliteLib.AddDataSet(did, dataSource.ValueType, newValStr)
+		if err != nil {
+			json.NewEncoder(w).Encode(GenError(err.Error()))
+			return
+		}
+	}
+	if err = sqliteLib.UpdateDataSetValue(dsid, newValStr); err != nil {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
 	}
-
-	err = sqliteLib.UpdateDataSetValue(dsid, newValStr)
-	if err != nil {
+	if err = sqliteLib.UpdateUpdatedTimestamp(did); err != nil {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
 	}
-
 	json.NewEncoder(w).Encode(CallbackTip {
 		Status: StatusSuccess,
 		Msg: "Update Successfully",
 	})
 }
 
+//删除数据源与所有数据
 func DelValHttpHandler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprint(w, "Welcome!\n")
+	uid, err := CheckToken(w, r)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	vars := mux.Vars(r)
+	did, err := strconv.ParseInt(vars["did"], 10, 64)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	if !sqliteLib.CheckDataSetPermission(uid, did) {
+		json.NewEncoder(w).Encode(GenError(ErrorNoAccessPermission))
+		return
+	}
+	if !sqliteLib.ExistDataSource(did) {
+		json.NewEncoder(w).Encode(GenError(ErrorContentNoFound))
+		return
+	}
+	if err = sqliteLib.DelDataSource(did); err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	if err = sqliteLib.DelDataSetViaDid(did); err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	json.NewEncoder(w).Encode(CallbackTip {
+		Status: StatusSuccess,
+		Msg: "Delete Successfully",
+	})
 }
 
+//列出所有数据源
 func ListDataSetHttpHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Welcome!\n")
+	uid, err := CheckToken(w, r)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	result, err := sqliteLib.GetDataSourcesViaUid(uid)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	json.NewEncoder(w).Encode(CallbackDataSourceList {
+		Status: StatusSuccess,
+		Data: *result,
+	})
 }

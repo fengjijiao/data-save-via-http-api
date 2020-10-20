@@ -104,8 +104,71 @@ func UpdatePassword(username, password string) error {
 type DataSource struct {
 	Did int64 `json:"did"`
 	Uid int64 `json:"uid"`
+	ValueType int `json:"valtype"`
 	CreatedTimestamp int `json:"createdTimestamp"`
 	UpdatedTimestamp int `json:"updatedTimestamp"`
+}
+
+func UpdateUpdatedTimestamp(did int64) error {
+	_, err := sqliteR.PrepareExec("UPDATE DataSource SET createdTimestamp = ? WHERE did = ? LIMIT 1;", time.Now().Unix(), did)
+	if err != nil {
+		fmt.Printf("UpdateUpdatedTimestamp Error: %s\n", err)
+		return err
+	}
+	return nil
+}
+
+func ExistDataSource(did int64) bool {
+	rows, err := sqliteR.PrepareQuery("SELECT did FROM DataSource WHERE did = ? LIMIT 1;", did)
+	if err != nil {
+		fmt.Printf("ExistDataSource Error: %s\n", err)
+		return false
+	}
+	count, err := sqliteR.GetCount(rows)
+	if err != nil {
+		return false
+	}
+	return count > 0
+}
+
+func GetDataSource(did int64) (*DataSource, error) {
+	rows, err := sqliteR.PrepareQuery("SELECT * FROM DataSource WHERE did = ? LIMIT 1;", did)
+	if err != nil {
+		fmt.Printf("GetDataSource Error: %s\n", err)
+		return nil, err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var datasource DataSource
+		err = rows.Scan(&datasource.Did, &datasource.CreatedTimestamp, &datasource.UpdatedTimestamp, &datasource.ValueType, &datasource.Uid)
+		if err != nil {
+			fmt.Printf("GetDataSource Error: %s\n", err)
+			return nil, err
+		}
+		return &datasource, nil
+	}
+	fmt.Println("GetDataSource Error: No eligible dataSource fond.")
+	return nil, errors.New("No eligible dataSource fond.")
+}
+
+func GetDataSourcesViaUid(uid int64) (*[]DataSource, error) {
+	rows, err := sqliteR.PrepareQuery("SELECT did, createdTimestamp, updatedTimestamp, valtype FROM DataSource WHERE uid = ?;", uid)
+	if err != nil {
+		fmt.Printf("GetDataSourcesViaUid Error: %s\n", err)
+		return nil, err
+	}
+	defer rows.Close()
+	var result []DataSource
+	for rows.Next() {
+		var item DataSource
+		err = rows.Scan(&item.Did, &item.CreatedTimestamp, &item.UpdatedTimestamp, &item.ValueType)
+		if err != nil {
+			fmt.Printf("GetDataSourcesViaUid Error: %s\n", err)
+			return nil, err
+		}
+		result = append(result, item)
+	}
+	return &result, nil
 }
 
 func AddDataSource(uid int64, valtype int) (int64, error) {
@@ -122,7 +185,7 @@ func AddDataSource(uid int64, valtype int) (int64, error) {
 	return id, nil
 }
 
-func DelDataSource(did int) error {
+func DelDataSource(did int64) error {
 	_, err := sqliteR.PrepareExec("DELETE FROM DataSource WHERE did = ?;", did)
 	if err != nil {
 		fmt.Printf("DelDataSource Error: %s\n", err)
@@ -185,8 +248,17 @@ type DataSet struct {
 	Value string `json:"value"`
 }
 
-func GetDataSet(did int64) (*DataSet, error) {
-	rows, err := sqliteR.PrepareQuery("SELECT * FROM DataSet WHERE did = ? LIMIT 1;", did)
+func DelDataSetViaDid(did int64) error {
+	_, err := sqliteR.PrepareExec("DELETE FROM DataSet WHERE did = ?;", did)
+	if err != nil {
+		fmt.Printf("DelDataSetByDid Error: %s\n", err)
+		return err
+	}
+	return nil
+}
+
+func GetDataSet(dsid int64) (*DataSet, error) {
+	rows, err := sqliteR.PrepareQuery("SELECT * FROM DataSet WHERE dsid = ? LIMIT 1;", dsid)
 	if err != nil {
 		fmt.Printf("GetDataSet Error: %s\n", err)
 		return nil, err
@@ -205,8 +277,8 @@ func GetDataSet(did int64) (*DataSet, error) {
 	return nil, errors.New("No eligible dataSet fond.")
 }
 
-func ExistDataSet(did int64) bool {
-	rows, err := sqliteR.PrepareQuery("SELECT * FROM DataSet WHERE did = ? LIMIT 1;", did)
+func ExistDataSet(dsid int64) bool {
+	rows, err := sqliteR.PrepareQuery("SELECT dsid FROM DataSet WHERE dsid = ? LIMIT 1;", dsid)
 	if err != nil {
 		fmt.Printf("ExistDataSet Error: %s\n", err)
 		return false
