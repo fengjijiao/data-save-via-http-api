@@ -1,0 +1,4 @@
+db:
+    filepath: "test.db"
+http:
+    listen: ":8090"
