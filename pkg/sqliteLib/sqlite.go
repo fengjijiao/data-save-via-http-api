@@ -110,7 +110,7 @@ type DataSource struct {
 }
 
 func UpdateUpdatedTimestamp(did int64) error {
-	_, err := sqliteR.PrepareExec("UPDATE DataSource SET createdTimestamp = ? WHERE did = ? LIMIT 1;", time.Now().Unix(), did)
+	_, err := sqliteR.PrepareExec("UPDATE DataSource SET updatedTimestamp = ? WHERE did = ?;", time.Now().Unix(), did)
 	if err != nil {
 		fmt.Printf("UpdateUpdatedTimestamp Error: %s\n", err)
 		return err
