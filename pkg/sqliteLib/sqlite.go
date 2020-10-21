@@ -105,8 +105,8 @@ type DataSource struct {
 	Did int64 `json:"did"`
 	Uid int64 `json:"uid"`
 	ValueType int `json:"valtype"`
-	CreatedTimestamp int `json:"createdTimestamp"`
-	UpdatedTimestamp int `json:"updatedTimestamp"`
+	CreatedTimestamp int64 `json:"createdTimestamp"`
+	UpdatedTimestamp int64 `json:"updatedTimestamp"`
 }
 
 func UpdateUpdatedTimestamp(did int64) error {
@@ -214,6 +214,25 @@ func GetUserInfo(uid int64) (*UserInfo, error) {
 		err = rows.Scan(&userinfo.Uid, &userinfo.UserName, &userinfo.PassWord, &userinfo.Total, &userinfo.Token)
 		if err != nil {
 			fmt.Printf("GetUserInfo Error: %s\n", err)
+			return nil, err
+		}
+		return &userinfo, nil
+	}
+	return nil, errors.New("No eligible user fond.")
+}
+
+func GetUserInfoViaUsername(username string) (*UserInfo, error) {
+	rows, err := sqliteR.PrepareQuery("SELECT * FROM User WHERE username = ? LIMIT 1;", username)
+	if err != nil {
+		fmt.Printf("GetUserInfoViaUsername Error: %s\n", err)
+		return nil, err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		var userinfo UserInfo
+		err = rows.Scan(&userinfo.Uid, &userinfo.UserName, &userinfo.PassWord, &userinfo.Total, &userinfo.Token)
+		if err != nil {
+			fmt.Printf("GetUserInfoViaUsername Error: %s\n", err)
 			return nil, err
 		}
 		return &userinfo, nil

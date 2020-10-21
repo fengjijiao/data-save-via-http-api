@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 const (
@@ -55,7 +56,7 @@ type CallbackRegister struct {
 
 type CallbackLoginData struct {
 	SessionToken string `json:"sessionToken"`
-	ExpireDate   int    `json:"expireDate"`
+	ExpireDate   int64    `json:"expireDate"`
 }
 
 type CallbackLogin struct {
@@ -90,11 +91,16 @@ func LoginHttpHandler(w http.ResponseWriter, r *http.Request) {
 			username := r.FormValue("username")
 			password := r.FormValue("password")
 			if sqliteLib.AuthUser(username, password) {
+				userInfo, err := sqliteLib.GetUserInfoViaUsername(username)
+				if err != nil {
+					json.NewEncoder(w).Encode(GenError(err.Error()))
+					return
+				}
 				json.NewEncoder(w).Encode(CallbackLogin {
 					Status: StatusSuccess,
 					Data: CallbackLoginData {
-						ExpireDate:   1111111111,
-						SessionToken: username + password ,
+						ExpireDate:   time.Now().Unix(),
+						SessionToken: userInfo.Token ,
 					},
 				})
 			}else {
