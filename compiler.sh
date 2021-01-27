@@ -1,6 +1,11 @@
 #!/bin/bash
 compiler() {
-  CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -trimpath -o bin/dsvha-${1}-${2} main.go
+  if [ "$1" == "windows" -o "$1" == "darwin" ];then
+    suffix=".exe";
+  else
+    suffix="";
+  fi
+  CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -trimpath -o bin/dsvha-${1}-${2}${suffix} main.go
 }
 compiler linux amd64
 compiler linux 386
