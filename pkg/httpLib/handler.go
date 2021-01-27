@@ -1,6 +1,7 @@
 package httpLib
 
 import (
+	"github.com/fengjijiao/data-save-via-http-api/pkg/coreLib"
 	"github.com/fengjijiao/data-save-via-http-api/pkg/sqliteLib"
 	"encoding/json"
 	"github.com/gorilla/mux"
@@ -37,7 +38,7 @@ type CallbackId struct {
 
 type CallbackDataSetData struct {
 	ValueType int    `json:"valueType"`
-	Value     string `json:"value"`
+	Value     interface{} `json:"value"`
 }
 
 type CallbackDataSet struct {
@@ -167,11 +168,15 @@ func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
 	}
+	dataVal, err := coreLib.ValTypeConv(result.Value, result.ValueType)
+	if err != nil {
+		dataVal = result.Value
+	}
 	json.NewEncoder(w).Encode(CallbackDataSet {
 		Status: StatusSuccess,
 		Data: CallbackDataSetData {
 			ValueType: result.ValueType,
-			Value: result.Value,
+			Value: dataVal,
 		},
 	})
 }
