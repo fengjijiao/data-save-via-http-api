@@ -1,7 +1,7 @@
 package httpLib
 
 import (
-	"../../pkg/sqliteLib"
+	"github.com/fengjijiao/data-save-via-http-api/pkg/sqliteLib"
 	"errors"
 	"net/http"
 )

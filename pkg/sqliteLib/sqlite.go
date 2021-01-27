@@ -1,7 +1,7 @@
 package sqliteLib
 
 import (
-	"../coreLib"
+	"github.com/fengjijiao/data-save-via-http-api/pkg/coreLib"
 	"errors"
 	_ "github.com/mattn/go-sqlite3"
 	//"database/sql"

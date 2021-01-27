@@ -1,9 +1,9 @@
 package main
 
 import (
-	"./pkg/coreLib"
-	"./pkg/httpLib"
-	"./pkg/sqliteLib"
+	"github.com/fengjijiao/data-save-via-http-api/pkg/coreLib"
+	"github.com/fengjijiao/data-save-via-http-api/pkg/httpLib"
+	"github.com/fengjijiao/data-save-via-http-api/pkg/sqliteLib"
 	"flag"
 	"fmt"
 	"github.com/jinzhu/configor"
