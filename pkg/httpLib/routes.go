@@ -21,7 +21,7 @@ func NewRouter() *mux.Router {
 	for _, route := range routes {
 		router.
 			Methods(route.Method).
-			Path(route.Pattern).
+			Path(path.Join(conf.Config.BaseUrlPath, route.Pattern)).
 			Name(route.Name).
 			Handler(route.HandlerFunc)
 	}
@@ -32,55 +32,55 @@ var routes = Routes {
 	Route {
 		"Index",
 		"GET",
-		path.Join(conf.Config.BaseUrlPath, "/"),
+		"/",
 		IndexHttpHandler,
 	},
 	Route {
 		"Login",
 		"POST",
-		path.Join(conf.Config.BaseUrlPath, "/login"),
+		"/login",
 		LoginHttpHandler,
 	},
 	Route {
 		"Register",
 		"POST",
-		path.Join(conf.Config.BaseUrlPath, "/register"),
+		"/register",
 		RegisterHttpHandler,
 	},
 	Route {
 		"CreateDataSet",
 		"POST",
-		path.Join(conf.Config.BaseUrlPath, "/dataSet/new"),
+		"/dataSet/new",
 		CreateDataSetHttpHandler,
 	},
 	Route {
 		"ListDataSet",
 		"GET",
-		path.Join(conf.Config.BaseUrlPath, "/dataSet/list"),
+		"/dataSet/list",
 		ListDataSetHttpHandler,
 	},
 	Route {
 		"GetValJson",
 		"GET",
-		path.Join(conf.Config.BaseUrlPath, "/dataSet/{did}/json"),
+		"/dataSet/{did}/json",
 		GetValJsonHttpHandler,
 	},
 	Route {
 		"GetVal",
 		"GET",
-		path.Join(conf.Config.BaseUrlPath, "/dataSet/{did}"),
+		"/dataSet/{did}",
 		GetValHttpHandler,
 	},
 	Route {
 		"PutVal",
 		"PUT",
-		path.Join(conf.Config.BaseUrlPath, "/dataSet/{did}"),
+		"/dataSet/{did}",
 		PutValHttpHandler,
 	},
 	Route {
 		"DelVal",
 		"DELETE",
-		path.Join(conf.Config.BaseUrlPath, "/dataSet/{did}"),
+		"/dataSet/{did}",
 		DelValHttpHandler,
 	},
 }
