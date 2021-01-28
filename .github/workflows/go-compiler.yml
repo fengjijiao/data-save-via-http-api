@@ -22,10 +22,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions/setup-go@v1
+      -
+        name: Build with xgo
+        uses: crazy-max/ghaction-xgo@v1
         with:
-           go-version: '1.15.5' # The Go version to download (if necessary) and use.
-      - run: chmod +x compiler.sh && ./compiler.sh
+          xgo_version: latest
+          go_version: ${{ matrix.go_version }}
+          dest: bin
+          prefix: dsvha
+          targets: windows/386,windows/amd64,linux/386,linux/amd64,darwin/386,darwin/amd64
+          v: true
+          x: false
+          race: false
+          ldflags: -s -w
+          buildmode: default
       -
         name: Upload production to Artifact
         uses: actions/upload-artifact@v2
