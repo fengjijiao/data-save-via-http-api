@@ -1,4 +1,3 @@
-db:
-    filepath: "test.db"
-http:
-    listen: ":8090"
+work-dir: /usr/local/etc/dsvha
+http-server-listen: ":8090"
+base-url-path: /api/dval

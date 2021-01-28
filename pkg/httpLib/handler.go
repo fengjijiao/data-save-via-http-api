@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"fmt"
 )
 
 const (
@@ -39,6 +40,7 @@ type CallbackId struct {
 type CallbackDataSetData struct {
 	ValueType int    `json:"valueType"`
 	Value     interface{} `json:"value"`
+	UpdatedTimestamp int64 `json:"updatedTimestamp"`
 }
 
 type CallbackDataSet struct {
@@ -141,7 +143,7 @@ func RegisterHttpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//获取数据值
+//获取数据值(text)
 func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 	uid, err := CheckToken(w, r)
 	if err != nil {
@@ -168,6 +170,40 @@ func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(GenError(err.Error()))
 		return
 	}
+	fmt.Fprintf(w, result.Value)
+}
+
+//获取数据值(json)
+func GetValJsonHttpHandler(w http.ResponseWriter, r *http.Request) {
+	uid, err := CheckToken(w, r)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	vars := mux.Vars(r)
+	did, err := strconv.ParseInt(vars["did"], 10, 64)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	if !sqliteLib.CheckDataSetPermission(uid, did) {
+		json.NewEncoder(w).Encode(GenError(ErrorNoAccessPermission))
+		return
+	}
+	if !sqliteLib.ExistDataSource(did) {
+		json.NewEncoder(w).Encode(GenError(ErrorContentNoFound))
+		return
+	}
+	dataSource, err := sqliteLib.GetDataSource(did)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
+	result, err := sqliteLib.GetDataSet(dataSource.Did)
+	if err != nil {
+		json.NewEncoder(w).Encode(GenError(err.Error()))
+		return
+	}
 	dataVal, err := coreLib.ValTypeConv(result.Value, result.ValueType)
 	if err != nil {
 		dataVal = result.Value
@@ -177,6 +213,7 @@ func GetValHttpHandler(w http.ResponseWriter, r *http.Request) {
 		Data: CallbackDataSetData {
 			ValueType: result.ValueType,
 			Value: dataVal,
+			UpdatedTimestamp: dataSource.UpdatedTimestamp,
 		},
 	})
 }

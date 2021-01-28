@@ -1,44 +1,53 @@
 package main
 
 import (
+	"github.com/fengjijiao/data-save-via-http-api/pkg/commonio"
+	"github.com/fengjijiao/data-save-via-http-api/pkg/conf"
+	"github.com/fengjijiao/data-save-via-http-api/pkg/logio"
 	"github.com/fengjijiao/data-save-via-http-api/pkg/coreLib"
 	"github.com/fengjijiao/data-save-via-http-api/pkg/httpLib"
 	"github.com/fengjijiao/data-save-via-http-api/pkg/sqliteLib"
 	"flag"
-	"fmt"
-	"github.com/jinzhu/configor"
 	"os"
+	"go.uber.org/zap"
 )
 
-var ConfigPATH string
-var Config = struct {
-	DB struct {
-		FilePath string `default:"test.db"`
-	}
-	HTTP struct {
-		Listen string `default:":8090"`
-	}
-}{}
+var (
+	configFilePath string
+	flagQuiet bool
+	Close chan int
+)
 
 func init() {
-	flag.StringVar(&ConfigPATH, "c", "config.yaml", "the path of configuration file")
+	Close = make(chan int)
+	
+	logio.Init()
+	
+	flag.StringVar(&configFilePath, "c", "config.yaml", "the path of configuration file")
+	flag.BoolVar(&flagQuiet, "quiet", false, "quiet for log print.")
+	
 	flag.Parse()
-	if !coreLib.IsFile(ConfigPATH) || !coreLib.ExistsFile(ConfigPATH) {
-		fmt.Printf("Failed to find configuration from %s\n", ConfigPATH)
-		os.Exit(3)
-		return
+	
+	if(flagQuiet) {
+		logio.Cfg.Level.SetLevel(zap.ErrorLevel)
 	}
-	if err := configor.Load(&Config, ConfigPATH); err != nil {
-		fmt.Println(err)
-		os.Exit(3)
-		return
+	
+	if !coreLib.IsFile(configFilePath) || !coreLib.ExistsFile(configFilePath) {
+		logio.Logger.Fatal("configure file not found!")
 	}
-	sqliteLib.SetDBPath(Config.DB.FilePath)
-	httpLib.SetListenAddress(Config.HTTP.Listen)
+	
+	dat, err := commonio.ReadFile(configFilePath)
+	if err != nil {
+		logio.Logger.Fatal("read configure file fail!", zap.Error(err))
+	}
+	
+	err = conf.Load(dat)
+	if err != nil {
+		logio.Logger.Fatal("parse configure file fail!", zap.Error(err))
+	}
 }
 
 func main() {
-	Close := make(chan int)
 	sqliteLib.Init()
 	sqliteLib.InitTable()
 	go httpLib.Run(Close)

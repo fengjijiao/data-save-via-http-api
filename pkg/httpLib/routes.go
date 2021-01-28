@@ -3,6 +3,8 @@ package httpLib
 import (
 	"net/http"
 	"github.com/gorilla/mux"
+	"github.com/fengjijiao/data-save-via-http-api/pkg/conf"
+	"path"
 )
 
 type Route struct {
@@ -30,49 +32,55 @@ var routes = Routes {
 	Route {
 		"Index",
 		"GET",
-		"/",
+		path.Join(conf.Config.BaseUrlPath, "/"),
 		IndexHttpHandler,
 	},
 	Route {
 		"Login",
 		"POST",
-		"/login",
+		path.Join(conf.Config.BaseUrlPath, "/login"),
 		LoginHttpHandler,
 	},
 	Route {
 		"Register",
 		"POST",
-		"/register",
+		path.Join(conf.Config.BaseUrlPath, "/register"),
 		RegisterHttpHandler,
 	},
 	Route {
 		"CreateDataSet",
 		"POST",
-		"/dataSet/new",
+		path.Join(conf.Config.BaseUrlPath, "/dataSet/new"),
 		CreateDataSetHttpHandler,
 	},
 	Route {
 		"ListDataSet",
 		"GET",
-		"/dataSet/list",
+		path.Join(conf.Config.BaseUrlPath, "/dataSet/list"),
 		ListDataSetHttpHandler,
+	},
+	Route {
+		"GetValJson",
+		"GET",
+		path.Join(conf.Config.BaseUrlPath, "/dataSet/{did}/json"),
+		GetValJsonHttpHandler,
 	},
 	Route {
 		"GetVal",
 		"GET",
-		"/dataSet/{did}",
+		path.Join(conf.Config.BaseUrlPath, "/dataSet/{did}"),
 		GetValHttpHandler,
 	},
 	Route {
 		"PutVal",
 		"PUT",
-		"/dataSet/{did}",
+		path.Join(conf.Config.BaseUrlPath, "/dataSet/{did}"),
 		PutValHttpHandler,
 	},
 	Route {
 		"DelVal",
 		"DELETE",
-		"/dataSet/{did}",
+		path.Join(conf.Config.BaseUrlPath, "/dataSet/{did}"),
 		DelValHttpHandler,
 	},
 }
